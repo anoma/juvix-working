@@ -51,7 +51,7 @@ evalState
 instance
 StateT-Functor
   {S : Type} {M : Type → Type} {{func : Functor M}} : Functor (StateT S M) :=
-  mkFunctor@{
+  Functor.mk@{
     map {A B : Type} (f : A → B) : StateT S M A → StateT S M B
       | (mkStateT S→M⟨A×S⟩) :=
         mkStateT λ{s := Functor.map λ{(a, s') := f a, s'} (S→M⟨A×S⟩ s)};
@@ -141,7 +141,7 @@ runReader {S A : Type} {M : Type → Type} (r : S) (m : ReaderT S M A) : M A :=
 instance
 ReaderT-Functor
   {S : Type} {M : Type → Type} {{Functor M}} : Functor (ReaderT S M) :=
-  mkFunctor@{
+  Functor.mk@{
     map {A B : Type} (f : A → B) : ReaderT S M A → ReaderT S M B
       | (mkReaderT g) := mkReaderT λ{s := Functor.map λ{a := f a} (g s)};
   };
@@ -222,7 +222,7 @@ open Identity public;
 
 instance
 Identity-Functor : Functor Identity :=
-  mkFunctor@{
+  Functor.mk@{
     map {A B : Type} (f : A -> B) : Identity A -> Identity B
       | (mkIdentity a) := mkIdentity (f a);
   };
