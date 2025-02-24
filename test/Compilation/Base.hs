@@ -1,6 +1,7 @@
 module Compilation.Base where
 
 import Base
+import Core.Eval.Base
 import Data.HashMap.Strict qualified as HashMap
 import Juvix.Compiler.Backend
 import Juvix.Compiler.Core qualified as Core
@@ -8,7 +9,6 @@ import Juvix.Compiler.Pipeline.Modular (modularCoreToTree)
 import Juvix.Compiler.Tree.Data.Module qualified as Tree
 import Juvix.Prelude.Pretty
 import Tree.Compile.Base
-import Tree.Eval.Base
 
 data CompileAssertionMode
   = EvalOnly
@@ -51,9 +51,12 @@ compileAssertionEntry adjustEntry root' optLevel mode mainFile expectedFile step
       assertFailure (prettyString (fromJuvixError @GenericError e))
     Right (mid, mtab) -> do
       let md = fromJust $ HashMap.lookup mid (mtab ^. Core.moduleTable)
-          tab' = Tree.computeCombinedInfoTable md
-          evalAssertion = treeEvalAssertion' (Tree.moduleFromInfoTable tab') expectedFile step
-          compileAssertion' stdinText = treeCompileAssertion' entryPoint optLevel tab' mainFile expectedFile stdinText step
+          evalAssertion = do
+            step "Translate to JuvixCore"
+            PipelineResult {..} <- snd <$> testRunIO entryPoint upToStoredCore
+            let tab' = Core.computeCombinedInfoTable (_pipelineResult ^. Core.coreResultModule)
+            coreEvalAssertion' EvalModePlain tab' mainFile expectedFile step
+          compileAssertion' stdinText = treeCompileAssertion' entryPoint optLevel (Tree.computeCombinedInfoTable md) mainFile expectedFile stdinText step
       case mode of
         EvalOnly -> evalAssertion
         CompileOnly stdinText -> compileAssertion' stdinText
