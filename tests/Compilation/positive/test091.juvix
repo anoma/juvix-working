@@ -60,7 +60,7 @@ StateT-Functor
 instance
 StateT-Applicative
   {S : Type} {M : Type -> Type} {{Monad M}} : Applicative (StateT S M) :=
-  mkApplicative@{
+  Applicative.mk@{
     ap {A B} : StateT S M (A -> B) -> StateT S M A -> StateT S M B
       | (mkStateT mf) (mkStateT mx) :=
         mkStateT
@@ -77,7 +77,7 @@ StateT-Applicative
 instance
 StateT-Monad
   {S : Type} {M : Type → Type} {{mon : Monad M}} : Monad (StateT S M) :=
-  mkMonad@{
+  Monad.mk@{
     applicative := StateT-Applicative;
     bind
       {A B : Type} (x : StateT S M A) (f : A → StateT S M B) : StateT S M B :=
@@ -152,7 +152,7 @@ ReaderT-Applicative
   {M : Type → Type}
   {{func : Applicative M}}
   : Applicative (ReaderT S M) :=
-  mkApplicative@{
+  Applicative.mk@{
     pure {A} (a : A) : ReaderT S M A := mkReaderT λ{s := Applicative.pure a};
     ap {A B} : ReaderT S M (A -> B) -> ReaderT S M A -> ReaderT S M B
       | (mkReaderT mf) (mkReaderT ma) :=
@@ -162,7 +162,7 @@ ReaderT-Applicative
 instance
 ReaderT-Monad
   {S : Type} {M : Type → Type} {{mon : Monad M}} : Monad (ReaderT S M) :=
-  mkMonad@{
+  Monad.mk@{
     applicative := ReaderT-Applicative;
     bind
       {A B : Type}
@@ -229,7 +229,7 @@ Identity-Functor : Functor Identity :=
 
 instance
 Identity-Applicative : Applicative Identity :=
-  mkApplicative@{
+  Applicative.mk@{
     pure := mkIdentity;
     ap {A B} : Identity (A -> B) -> Identity A -> Identity B
       | (mkIdentity f) (mkIdentity x) := mkIdentity (f x);
@@ -237,7 +237,7 @@ Identity-Applicative : Applicative Identity :=
 
 instance
 Identity-Monad : Monad Identity :=
-  mkMonad@{
+  Monad.mk@{
     bind {A B : Type} : Identity A -> (A -> Identity B) -> Identity B
       | (mkIdentity a) f := f a;
   };
