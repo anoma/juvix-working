@@ -56,6 +56,7 @@ data EntryPoint = EntryPoint
     _entryPointFieldSize :: Natural,
     _entryPointIsabelleOnlyTypes :: Bool,
     _entryPointPipeline :: Maybe Pipeline,
+    -- | The SHA256 hash of the source file at _entryPointModulePath
     _entryPointSHA256 :: Maybe Text
   }
   deriving stock (Eq, Show)

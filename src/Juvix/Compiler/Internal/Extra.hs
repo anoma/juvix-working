@@ -356,12 +356,4 @@ substituteIndParams = substitutionE . HashMap.fromList . map (first (^. inductiv
 
 getInductiveKind :: InductiveDef -> Expression
 getInductiveKind InductiveDef {..} =
-  foldr
-    ( \p f ->
-        ExpressionFunction $
-          Function
-            (FunctionParameter (Just (p ^. inductiveParamName)) Explicit (p ^. inductiveParamType))
-            f
-    )
-    _inductiveType
-    _inductiveParameters
+  foldFunType (map inductiveToFunctionParam _inductiveParameters) _inductiveType
