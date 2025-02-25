@@ -1,9 +1,14 @@
 module Compilation.Base where
 
 import Base
-import Core.Compile.Base
 import Core.Eval.Base
+import Data.HashMap.Strict qualified as HashMap
+import Juvix.Compiler.Backend
 import Juvix.Compiler.Core qualified as Core
+import Juvix.Compiler.Pipeline.Modular (modularCoreToTree)
+import Juvix.Compiler.Tree.Data.Module qualified as Tree
+import Juvix.Prelude.Pretty
+import Tree.Compile.Base
 
 data CompileAssertionMode
   = EvalOnly
@@ -19,7 +24,14 @@ compileAssertion ::
   Path Abs File ->
   (String -> IO ()) ->
   Assertion
-compileAssertion = compileAssertionEntry (set entryPointPipeline (Just PipelineExec))
+compileAssertion root' optLevel =
+  compileAssertionEntry
+    ( set entryPointTarget (Just TargetCNative64)
+        . set entryPointPipeline (Just PipelineExec)
+        . set entryPointOptimizationLevel optLevel
+    )
+    root'
+    optLevel
 
 compileAssertionEntry ::
   (EntryPoint -> EntryPoint) ->
@@ -31,16 +43,24 @@ compileAssertionEntry ::
   (String -> IO ()) ->
   Assertion
 compileAssertionEntry adjustEntry root' optLevel mode mainFile expectedFile step = do
-  step "Translate to JuvixCore"
+  step "Translate to JuvixTree"
   entryPoint <- adjustEntry <$> testDefaultEntryPointIO root' mainFile
-  PipelineResult {..} <- snd <$> testRunIO entryPoint upToStoredCore
-  let tab' = Core.computeCombinedInfoTable (_pipelineResult ^. Core.coreResultModule)
-      evalAssertion = coreEvalAssertion' EvalModePlain tab' mainFile expectedFile step
-      compileAssertion' stdinText = coreCompileAssertion' entryPoint optLevel tab' mainFile expectedFile stdinText step
-  case mode of
-    EvalOnly -> evalAssertion
-    CompileOnly stdinText -> compileAssertion' stdinText
-    EvalAndCompile -> evalAssertion >> compileAssertion' ""
+  r <- testRunIOModular (Just Core.CheckExec) entryPoint modularCoreToTree
+  case r of
+    Left e -> do
+      assertFailure (prettyString (fromJuvixError @GenericError e))
+    Right (mid, mtab) -> do
+      let md = fromJust $ HashMap.lookup mid (mtab ^. Core.moduleTable)
+          evalAssertion = do
+            step "Translate to JuvixCore"
+            PipelineResult {..} <- snd <$> testRunIO entryPoint upToStoredCore
+            let tab' = Core.computeCombinedInfoTable (_pipelineResult ^. Core.coreResultModule)
+            coreEvalAssertion' EvalModePlain tab' mainFile expectedFile step
+          compileAssertion' stdinText = treeCompileAssertion' entryPoint optLevel (Tree.computeCombinedInfoTable md) mainFile expectedFile stdinText step
+      case mode of
+        EvalOnly -> evalAssertion
+        CompileOnly stdinText -> compileAssertion' stdinText
+        EvalAndCompile -> evalAssertion >> compileAssertion' ""
 
 compileErrorAssertion ::
   Path Abs Dir ->
